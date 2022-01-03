@@ -19,7 +19,22 @@ for i in response:
 
 st.title('VE attributes table')
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns([1,1, 1])
+
+
+# with col0:
+#     st.write("Generic Names")
+#     count = 0
+#     for i in generic_name_options:
+#         st.write(i)
+#         count = count + 1
+#         if count==len(generic_name_options)/2:
+#             break
+# with col01:
+#     for i in range(count,len(generic_name_options)):
+#         st.write(list(generic_name_options)[i])
+
+
 
 with col1:
     Generic_name = st.selectbox(
@@ -65,7 +80,6 @@ for j in response_for_attribute:
         attribute_value_options.add(k)
     
 with col2:
-#    for i in attribute_value_options:
     my_values = st.multiselect(
         "Att values",
         attribute_value_options
@@ -79,6 +93,7 @@ with col3:
     if len(response)>0:
         salesman_values = st.multiselect("Salesman values",response[0]["values"])
         count = count + 1
+        svalues = salesman_values
     else:
         salesman_values = st.multiselect("Salesman values",[])
 
@@ -126,9 +141,10 @@ if button_clicked1:
                     }
                     )            
 
-#with col4:
-
-
+# with col4:
+#     st.write("Attribute")
+#     for i in attribute_value_options:
+#         st.write(i)
 response = list(db.combined_collection.find({"generic_name":Generic_name}))
 generic_name_col = []
 att_col = []
@@ -148,3 +164,21 @@ pd_data = {
 }
 df = pd.DataFrame(pd_data)
 st.write(df)
+
+c1,c2,c3 = st.columns(3)
+
+with c1:
+    st.write("GENERIC NAMES")
+    for i in generic_name_options:
+        st.write(i)
+
+with c2:
+    st.write("ATTRIBUTE VALUES FOR " + str(Attribute).upper())
+    for i in attribute_value_options:
+        st.write(i)
+
+with c3:
+    st.write("SALESMAN VALUES")
+    print(svalues)
+    for j in list(db.salesman_collection.find({"generic_name":Generic_name,"attribute":Attribute}))[0]["values"]:
+        st.write(j)
