@@ -1,3 +1,4 @@
+from re import S
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -18,56 +19,43 @@ for i in response:
 
 st.title('VE attributes table')
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     Generic_name = st.selectbox(
         'Generic_name (Category)',
         generic_name_options)
+                
 
-    title = st.text_input("Enter Synonym",key="gen")
-    button_clicked = st.button("Add Synonym",key="genb")
-    if button_clicked:
-        db.genMap_collection.update_one({
-            "generic_name":Generic_name
-        },
-        {
-            "$push":{"synonyms":title}
-        }
-        )
+    response_for_generic_name = list(db.attValueMap_collection.find({"generic_name":Generic_name}))
 
-    response_for_synonyms = list(db.genMap_collection.find({"generic_name":Generic_name}))
-    for i in response_for_synonyms:
-        for k in i["synonyms"]:
-            st.write(k)
+    attribute_options = set()
+    for j in response_for_generic_name:
+        attribute_options.add(j["attribute"])
 
-response_for_generic_name = list(db.attValueMap_collection.find({"generic_name":Generic_name}))
-
-attribute_options = set()
-for j in response_for_generic_name:
-    attribute_options.add(j["attribute"])
-
-with col2:
     Attribute = st.selectbox(
-        'Attribute',
-        attribute_options)
+            'Attribute',
+            attribute_options)
 
-    title = st.text_input("Enter Synonym",key="att")
-    button_clicked = st.button("Add Synonym",key="attb")
+    title = st.text_input("Enter salesman values")
+    button_clicked = st.button("Add",key="addd")
+    response = list(db.salesman_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
     if button_clicked:
-        db.attMap_collection.update_one({
-            "generic_name":Generic_name,
-            "attribute":Attribute
-        },
-        {
-            "$push":{"synonyms":title}
-        }
-        )
-
-    response_for_synonyms = list(db.attMap_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
-    for i in response_for_synonyms:
-        for k in i["synonyms"]:
-            st.write(k)
+        if len(response)<1:
+            db.salesman_collection.insert_one({
+                "generic_name": Generic_name,
+                "attribute":Attribute,
+                "values":[title],
+                "salesman_values":[]
+            })
+        else:
+            db.salesman_collection.update_one({
+                "generic_name":Generic_name,
+                "attribute":Attribute
+            },
+            {
+                "$addToSet":{"values":title}
+            })
 
 response_for_attribute = list(db.categories_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
 
@@ -75,27 +63,88 @@ attribute_value_options = set()
 for j in response_for_attribute:
     for k in j["values"]:
         attribute_value_options.add(k)
-
+    
+with col2:
+#    for i in attribute_value_options:
+    my_values = st.multiselect(
+        "Att values",
+        attribute_value_options
+    )
 
 with col3:
-    Attribute_Value = st.selectbox(
-        'Attribute Value',
-        attribute_value_options)
     
-    title = st.text_input("Enter Synonym",key="attValue")
-    button_clicked = st.button("Add Synonym",key="attValb")
-    if button_clicked:
-        db.attValueMap_collection.update_one({
-            "generic_name":Generic_name,
-            "attribute":Attribute,
-            "attribute_value":Attribute_Value
-        },
-        {
-            "$push":{"synonyms":title}
-        }
-        )
+    response = list(db.salesman_collection.find({"generic_name":Generic_name,"attribute":Attribute}))    
+    count = 0
+    salesman_values = []
+    if len(response)>0:
+        salesman_values = st.multiselect("Salesman values",response[0]["values"])
+        count = count + 1
+    else:
+        salesman_values = st.multiselect("Salesman values",[])
 
-    response_for_synonyms = list(db.attValueMap_collection.find({"generic_name":Generic_name,"attribute":Attribute,"attribute_value":Attribute_Value}))
-    for i in response_for_synonyms:
-        for k in i["synonyms"]:
-            st.write(k)
+flag1 = (len(my_values)==1) and (len(salesman_values)>0)
+flag2 = (len(salesman_values)==1) and (len(my_values)>0)
+
+button_clicked1 = st.button("Add to table",key="addtotable")
+if button_clicked1:
+    if flag1:
+        response = db.combined_collection.find({"generic_name":Generic_name,"attribute":Attribute,"values":my_values[0]})
+        if len(list(response))<1:
+            db.combined_collection.insert_one({
+                "generic_name":Generic_name,
+                "attribute":Attribute,
+                "values":my_values[0]
+            })
+        for val in salesman_values:
+            response = db.combined_collection.update_one(
+                {"generic_name":Generic_name,
+                "attribute":Attribute,
+                "values":my_values[0]
+                },
+                {
+                    "$addToSet":{"salesman_values":val}
+                }
+                )
+    elif flag2:
+        for val in my_values:
+            response = db.combined_collection.find({"generic_name":Generic_name,"attribute":Attribute,"values":val})
+            if len(list(response))<1:
+                db.combined_collection.insert_one({
+                    "generic_name":Generic_name,
+                    "attribute":Attribute,
+                    "values":val,
+                    "salesman_values":[salesman_values[0]]
+                })
+            else:
+                response = db.combined_collection.update_one(
+                    {"generic_name":Generic_name,
+                    "attribute":Attribute,
+                    "values":val
+                    },
+                    {
+                        "$addToSet":{"salesman_values":salesman_values[0]}
+                    }
+                    )            
+
+#with col4:
+
+
+response = list(db.combined_collection.find({"generic_name":Generic_name}))
+generic_name_col = []
+att_col = []
+att_values_col = []
+salesman_values_col = []
+for i in response:
+    generic_name_col.append(i["generic_name"])
+    att_col.append(i["attribute"])
+    att_values_col.append(i["values"])
+    salesman_values_col.append(",".join(i["salesman_values"]))
+
+pd_data = {
+    "generic_name": generic_name_col,
+    "attribute":att_col,
+    "Attribute values":att_values_col,
+    "Salesman values": salesman_values_col
+}
+df = pd.DataFrame(pd_data)
+st.write(df)
