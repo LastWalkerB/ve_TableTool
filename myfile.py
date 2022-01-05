@@ -22,20 +22,6 @@ st.title('VE attributes table')
 col1, col2, col3 = st.columns([1,1, 1])
 
 
-# with col0:
-#     st.write("Generic Names")
-#     count = 0
-#     for i in generic_name_options:
-#         st.write(i)
-#         count = count + 1
-#         if count==len(generic_name_options)/2:
-#             break
-# with col01:
-#     for i in range(count,len(generic_name_options)):
-#         st.write(list(generic_name_options)[i])
-
-
-
 with col1:
     Generic_name = st.selectbox(
         'Generic_name (Category)',
@@ -61,7 +47,6 @@ with col1:
                 "generic_name": Generic_name,
                 "attribute":Attribute,
                 "values":[title],
-                "salesman_values":[]
             })
         else:
             db.salesman_collection.update_one({
@@ -71,6 +56,24 @@ with col1:
             {
                 "$addToSet":{"values":title}
             })
+
+    button_clicked1 = st.button("Remove",key="Remove")
+    if button_clicked1:
+        db.salesman_collection.update_many({
+            "generic_name":Generic_name,
+            "attribute":Attribute
+        },
+        {
+            "$pull":{"values":title}
+        })
+        db.combined_collection.update_many({
+            "generic_name":Generic_name,
+            "attribute":Attribute,
+            "salesman_values":title
+        },
+        {
+            "$pull":{"salesman_values":title}
+        })    
 
 response_for_attribute = list(db.categories_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
 
@@ -141,10 +144,6 @@ if button_clicked1:
                     }
                     )            
 
-# with col4:
-#     st.write("Attribute")
-#     for i in attribute_value_options:
-#         st.write(i)
 response = list(db.combined_collection.find({"generic_name":Generic_name}))
 generic_name_col = []
 att_col = []
@@ -179,6 +178,7 @@ with c2:
 
 with c3:
     st.write("SALESMAN VALUES")
-    print(svalues)
-    for j in list(db.salesman_collection.find({"generic_name":Generic_name,"attribute":Attribute}))[0]["values"]:
-        st.write(j)
+    response = list(db.salesman_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
+    if len(response)>0:
+        for j in response[0]["values"]:
+            st.write(j)
