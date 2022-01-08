@@ -74,6 +74,7 @@ with col1:
         {
             "$pull":{"salesman_values":title}
         })    
+        db.combined_collection.delete_many({"salesman_values":[]})
 
 response_for_attribute = list(db.categories_collection.find({"generic_name":Generic_name,"attribute":Attribute}))
 
